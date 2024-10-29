@@ -1,5 +1,5 @@
 import random
-import matplotlib
+import matplotlib.pyplot as plt
 
 def get_season_temp(day_of_year):
     '''
@@ -46,6 +46,10 @@ def data_stream(years, get_season_temp):
         data_holder(array -> floats): Temperatures.
     '''
 
+    # Handle bad data.
+    if not isinstance(years, int) or years <= 0:
+        raise ValueError("Enter positive integers.")
+
     # Final data_stream array storage
     data_holder = []
 
@@ -87,11 +91,19 @@ def data_stream(years, get_season_temp):
     return data_holder
 
 
-
 def anomaly_detector(stream, get_season_temp):
     '''
     Method for determining anomalies in the stream produced from the data_stream
     method. 
+    
+    Reason as to why this algorithm is efficient, clean, and accurate:
+    This algorithm runs in linear time complexity, we know this because we iterate
+    through our stream length once, iteratively. Looking at the space allocation and efficiency,
+    this is very efficient through the use of constant data structures like a dictionary for fast lookups and insertions.
+    Not only this, but its accurate and effective because we don't utilize the seasonal 
+    dictionary to have fast lookup of a range of temperatures, from which we can determine 
+    if the current tempurature is anomalistic due to bounds checking. On top of this, we add 
+    a buffer value to avoid false positive data and focus on data points that truly are anomalies.
 
     Parameters:
         stream(array -> floats): Data stream fetched from the data_stream method.
@@ -106,7 +118,7 @@ def anomaly_detector(stream, get_season_temp):
     anomalies = {}
 
     # Buffer value to run the temperatures against to determine if they are normal or anomalistic.
-    buffer = 20
+    buffer = 10
     
     for i in range(len(stream)):
 
@@ -131,28 +143,69 @@ def anomaly_detector(stream, get_season_temp):
     return anomalies
 
 
-print(anomaly_detector(data_stream(2, get_season_temp), get_season_temp))
-
 def visualize_data_and_anomalies(years):
-    temperature_data = data_stream(years, get_season_temp)
-    anomalies = anomaly_detector(temperature_data, get_season_temp)
+    '''
+    Method to visually display anomalies on top of the original data stream.
+    Reference: https://www.w3schools.com/python/matplotlib_intro.asp
 
-    # Plotting the data
-    plt.figure(figsize=(15, 6))
-    plt.plot(temperature_data, label='Temperature Data', color='blue', alpha=0.6)
+    Parameters:
+        years(int): Used to create the data stream and anomaly methods.
 
-    # Highlighting the anomalies
-    for year, anomaly_temps in anomalies.items():
-        anomaly_indices = [(i + (year - 1) * 365) for i in range(len(temperature_data)) if temperature_data[i] in anomaly_temps]
-        plt.scatter(anomaly_indices, [temperature_data[i] for i in anomaly_indices], color='red', label='Anomalies' if year == 1 else "", zorder=5)
+    Returns:
+        None
+    '''
 
+    # Get the data stream and anomaly data.
+    stream = data_stream(years, get_season_temp)
+    anomalies = anomaly_detector(stream, get_season_temp)
+
+    # Plot the original data stream, make it blue and give it a legent label.
+    plt.plot(stream, label='Temperature Data', color='blue')
+
+    # Used to prevent mass printing of anomalies on the legend
+    anomaly_labeled = False  
+
+    # This was tricky, first, dictname.values() is the only way I know how to 
+    # extract dictionary data out to a list, instead of other finnicky data types.
+    for anomaly_vals in anomalies.values():
+
+        # So now since anomaly_vals is a list with the anomaly data, 
+        # lets loop through it to manipulate the actual floats.
+        for anom in anomaly_vals:
+
+            # Find the index of said anomaly in the original data stream so it can be represented usefully in the plot.
+            anomaly_index = stream.index(anom)
+
+            # If we haven't labeled the legend for anomalies yet, plot the anomalies and label the legend.  
+            if anomaly_labeled == False:
+                plt.scatter(anomaly_index, anom, color='red', label='Anomalies')
+
+            # If we have, do same, just don't keep adding anomaly to the legend.
+            else:
+                plt.scatter(anomaly_index, anom, color='red', label='')
+            anomaly_labeled = True  
+
+    # Standard plotlib markup.
     plt.title(f'Temperature Data and Anomalies Over {years} Years')
     plt.xlabel('Days')
     plt.ylabel('Temperature (°F)')
-    plt.axhline(0, color='black', linewidth=0.5, ls='--')
+    plt.axhline(0, color='black', linewidth=0.5)
     plt.legend()
-    plt.grid()
     plt.show()
 
-# Example usage
-visualize_data_and_anomalies(90)
+
+def main():
+    print('data_stream of 1 year: ', data_stream(1, get_season_temp))
+    print('data_stream of 5 years: ', data_stream(5, get_season_temp))
+    print('data_stream of 50 years: ', data_stream(50, get_season_temp))
+
+    print('anomaly_detector of 1 year: ', anomaly_detector(data_stream(1, get_season_temp), get_season_temp))
+    print('anomaly_detector of 5 years: ', anomaly_detector(data_stream(5, get_season_temp), get_season_temp))
+    print('anomaly_detector of 50 years: ', anomaly_detector(data_stream(50, get_season_temp), get_season_temp))
+
+    # Run these one at a time:
+    visualize_data_and_anomalies(1)
+    #visualize_data_and_anomalies(5)
+    #visualize_data_and_anomalies(50)
+
+main()
